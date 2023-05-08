@@ -1,0 +1,67 @@
+from objectident import *
+import RPi.GPIO as GPIO
+from gpiozero import AngularServo
+from time import sleep
+from gpiozero import Button
+
+servo = AngularServo(12,min_pulse_width=0.0006,max_pulse_width=0.0023)
+
+motorPin = 13
+GPIO.setwarnings(False)        #disable warnings
+GPIO.setmode(GPIO.BCM)         #set pin numbering system
+GPIO.setup(motorPin,GPIO.OUT)
+pi_pwm = GPIO.PWM(motorPin,500)  #create PWM instance with frequency
+pi_pwm.start(0)                #start PWM of required Duty Cycle
+
+OikeaAnturi = Button(22)
+VasenAnturi = Button(27)
+
+cap = cv2.VideoCapture(0)
+cap.set(3,480)
+cap.set(4,640)
+#cap.set(10,70)
+
+
+
+def Translate (x,in_min,in_max,out_min,out_max):
+    return (x - in_min) * (out_max -out_min) / (in_max - in_min) + out_min
+
+
+    
+#Below is the never ending loop that determines what will happen when an object is identified.    
+while True:
+    success, img = cap.read()
+    img = cv2.rotate(img,2)
+#Below provides a huge amount of controll. the 0.45 number is the threshold number, the 0.2 number is the nms number)
+    result, objectInfo, x_center = getObjects(img,0.62,0.2, True, objects=['person'])
+    center_error = Translate(x_center,0,640,35,-35)
+    print(center_error)
+    
+    if center_error < 34.9 and center_error > -34.9:
+        person = True
+        #servo.angle = center_error
+    else:
+        person = False
+        servo.angle = 0
+    
+    if person == True:
+        pi_pwm.ChangeDutyCycle(0) #75
+    else:
+        pi_pwm.ChangeDutyCycle(0)
+        
+    if VasenAnturi.is_pressed:
+        servo.angle = -30
+        print("Vasen este")
+        sleep(1)
+  
+    if OikeaAnturi.is_pressed:
+        servo.angle = 30
+        print("Oikea este")
+        sleep(1)
+        
+    
+      
+    cv2.imshow("Output",img)
+    cv2.waitKey(1)
+    
+  
